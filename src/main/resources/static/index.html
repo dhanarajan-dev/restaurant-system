@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Food Ordering & Restaurant Management</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- Top Global Header / Navigation -->
+  <header>
+    <div class="nav-container">
+      <a href="#" class="brand" onclick="switchView(currentUser.role === 'ADMIN' ? 'restaurantList' : (currentUser.role === 'USER' ? 'foodList' : 'login'))">
+        <span class="brand-icon">🍛</span>
+        <span>FoodOrdering App</span>
+      </a>
+
+      <!-- Navigation Links with Role-Based Access Control -->
+      <nav class="nav-links">
+        <button id="navLoginBtn" class="nav-btn active" onclick="switchView('login')">🔐 Login</button>
+        <button id="navRegisterBtn" class="nav-btn" onclick="switchView('register')">📝 Register</button>
+        
+        <!-- Visible ONLY to USER -->
+        <button id="navFoodListBtn" class="nav-btn" onclick="switchView('foodList')" style="display: none;">🍽️ Food Item List</button>
+        <button id="navSummaryBtn" class="nav-btn" onclick="switchView('summary')" style="display: none;">🧾 Summary (<span id="cartNavCount">0</span>)</button>
+        
+        <!-- Visible ONLY to ADMIN -->
+        <button id="navRestaurantListBtn" class="nav-btn" onclick="switchView('restaurantList')" style="display: none;">
+          🏢 Restaurant Details (Admin View)
+          <span id="adminOrderNotificationBadge" class="badge-notify" style="display: none;">0</span>
+        </button>
+      </nav>
+
+      <!-- Current Role & Profile Badge -->
+      <div id="userStatusBadge" class="user-badge">
+        <span id="roleBadgeText">👤 Not Logged In</span>
+        <button id="logoutBtn" class="btn btn-outline btn-sm" onclick="logout()" style="display: none; padding: 2px 8px; margin-left: 6px;">Logout</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Admin Notification Banner for New Orders -->
+  <div id="adminNotificationBanner" class="notification-banner">
+    🔔 <strong>New Order Notification:</strong> A user just placed an order! <a href="#" onclick="switchView('restaurantList')" style="color: inherit; text-decoration: underline;">View in Order Placed section</a>
+  </div>
+
+  <!-- Main Content Container with Wireframe Views -->
+  <main>
+
+    <!-- 1. LOGIN PAGE -->
+    <section id="viewLogin" class="view-section active">
+      <div class="auth-container">
+        <div class="card">
+          <div class="card-title">
+            <span>🔑 Login Page</span>
+          </div>
+
+          <p style="font-size: 0.9rem; color: var(--gray-600); margin-bottom: 16px;">
+            Log in with your MySQL credentials.
+            <br>&bull; <strong>USER role:</strong> Has access <em>only</em> to the <strong>Food Item List</strong>.
+            <br>&bull; <strong>ADMIN role:</strong> Has access <em>only</em> to the <strong>Restaurant Details (Admin View)</strong>.
+          </p>
+
+          <form id="loginForm" onsubmit="handleLogin(event)">
+            <div class="form-group">
+              <label for="loginUsername">User name</label>
+              <input type="text" id="loginUsername" placeholder="Enter username" required value="user1">
+            </div>
+
+            <div class="form-group">
+              <label for="loginPassword">Pass word</label>
+              <input type="password" id="loginPassword" placeholder="Enter password" required value="pass123">
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block">Login</button>
+          </form>
+
+          <div class="auth-switch-link">
+            <span>Register ? </span>
+            <a href="javascript:void(0)" onclick="switchView('register')">Click here to Register</a>
+          </div>
+
+          <div class="quick-demo-login">
+            <button class="btn btn-outline btn-sm" onclick="quickLogin('USER')">👤 Quick Login as USER (user1)</button>
+            <button class="btn btn-outline btn-sm" onclick="quickLogin('ADMIN')">🛡️ Quick Login as ADMIN (admin)</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. REGISTER PAGES (Toggle between User and Admin in MySQL) -->
+    <section id="viewRegister" class="view-section">
+      <div class="auth-container">
+        <div class="card">
+          <div class="card-title">
+            <span>📝 Register Page</span>
+          </div>
+
+          <p style="font-size: 0.9rem; color: var(--gray-600); margin-bottom: 14px;">
+            Create a new account saved directly into the <strong>MySQL database</strong>.
+          </p>
+
+          <form id="registerForm" onsubmit="handleRegister(event)">
+            <!-- Role Selector -->
+            <div class="form-group">
+              <label for="regRole">Role</label>
+              <select id="regRole" onchange="toggleRegisterRoleFields()">
+                <option value="USER">User (Access ONLY to Food Item List)</option>
+                <option value="ADMIN">Admin (Access ONLY to Restaurant Details Admin View)</option>
+              </select>
+            </div>
+
+            <!-- Common Fields -->
+            <div class="form-group">
+              <label for="regUsername">Username</label>
+              <input type="text" id="regUsername" placeholder="Enter username" required>
+            </div>
+
+            <div class="form-group">
+              <label for="regPassword">Pass word</label>
+              <input type="password" id="regPassword" placeholder="Enter password" required>
+            </div>
+
+            <div class="form-group">
+              <label for="regEmail">Email</label>
+              <input type="email" id="regEmail" placeholder="Enter email" required>
+            </div>
+
+            <!-- Admin Specific Fields (Hotel Name, Location, Phone) -->
+            <div id="adminSpecificFields" class="admin-fields-box" style="display: none;">
+              <div class="admin-fields-box-title">🏢 Restaurant / Hotel Details (Admin Only)</div>
+              
+              <div class="form-group">
+                <label for="regRestaurantName">Restaurant name (Hotel name)</label>
+                <input type="text" id="regRestaurantName" placeholder="e.g. KS cafe">
+              </div>
+
+              <div class="form-group">
+                <label for="regLocation">Location</label>
+                <input type="text" id="regLocation" placeholder="e.g. Temple Street, Chennai">
+              </div>
+
+              <div class="form-group">
+                <label for="regPhone">Phone</label>
+                <input type="tel" id="regPhone" placeholder="e.g. 9876543210">
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-success btn-block" style="margin-top: 14px;">Register</button>
+          </form>
+
+          <div class="auth-switch-link">
+            <span>Already registered? </span>
+            <a href="javascript:void(0)" onclick="switchView('login')">Back to Login</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. FOOD ITEM LIST (USER Role ONLY) -->
+    <section id="viewFoodList" class="view-section">
+      <!-- Role Banner -->
+      <div class="flow-diagram-banner" style="margin-bottom: 16px;">
+        👤 <strong>USER Role Access:</strong> You have permission to view the <strong>Food Item List</strong> and order items. Admin management features are strictly restricted.
+      </div>
+
+      <!-- Restaurant Selector and Current Active Name -->
+      <div class="restaurant-select-bar">
+        <div class="restaurant-info-display">
+          <span style="font-size: 0.85rem; color: var(--gray-600); font-weight: 600;">Restaurant Name:</span>
+          <span id="userViewRestaurantName" class="restaurant-name-highlight">1. KS cafe</span>
+          <span id="userViewRestaurantMeta" class="restaurant-meta-highlight">Location: Loading... | Phone: Loading...</span>
+        </div>
+
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <label for="restaurantDropdownSelect" style="font-size: 0.85rem; font-weight: 600;">Switch Restaurant:</label>
+          <select id="restaurantDropdownSelect" onchange="onRestaurantSelectedChange()" style="padding: 6px 12px; border-radius: var(--radius); border: 1px solid var(--gray-300);">
+            <!-- Populated via JS from MySQL -->
+          </select>
+        </div>
+      </div>
+
+      <!-- Food Items Heading & Grid -->
+      <div class="card">
+        <div class="card-title">
+          <span>🍲 Food Item List</span>
+          <button class="btn btn-outline btn-sm" onclick="loadFoodItemsForUser()">🔄 Refresh Menu</button>
+        </div>
+
+        <div id="foodItemsUserGrid" class="food-items-grid">
+          <!-- Food cards dynamically inserted here from MySQL -->
+        </div>
+
+        <!-- Floating Cart / Summary Bar -->
+        <div class="cart-float-bar">
+          <div class="cart-float-summary">
+            <span class="cart-float-count">🛒 Selected Items: <span id="cartItemsCount">0</span></span>
+            <span class="cart-float-amount">Subtotal: ₹<span id="cartItemsTotal">0.00</span></span>
+          </div>
+          <button class="btn btn-primary" onclick="proceedToSummary()">
+            Proceed to Summary & Payment ➡️
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. SUMMARY PAGE (Checkout & Payment - USER Role) -->
+    <section id="viewSummary" class="view-section">
+      <div class="summary-container">
+        <div class="card">
+          <div class="card-title">
+            <span>🧾 Summary</span>
+            <button class="btn btn-outline btn-sm" onclick="switchView('foodList')">⬅️ Back to Food Items</button>
+          </div>
+
+          <!-- Restaurant Name in Summary -->
+          <div class="summary-restaurant-header">
+            <span style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--gray-600); display: block;">Restaurant Name</span>
+            <span id="summaryRestaurantName" class="summary-restaurant-title">KS cafe</span>
+          </div>
+
+          <!-- Food Item List Table -->
+          <div class="card-subtitle">Food Items Selected:</div>
+          <table class="summary-table">
+            <thead>
+              <tr>
+                <th>Food Item</th>
+                <th>Price</th>
+                <th>Qty</th>
+                <th>Total</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="summaryItemsTableBody">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+
+          <!-- Total Amount Box -->
+          <div class="summary-total-box">
+            <span class="summary-total-label">Total Amount:</span>
+            <span class="summary-total-value">₹<span id="summaryTotalAmount">0.00</span></span>
+          </div>
+
+          <!-- Payment Options matching diagram: [Cash] [GPay] -->
+          <div style="margin-top: 10px;">
+            <p style="font-size: 0.9rem; font-weight: 600; color: var(--gray-600); margin-bottom: 8px;">
+              Choose Payment Method (Clicking will display "Payment Success"):
+            </p>
+            <div class="payment-buttons-box">
+              <button class="payment-btn btn-cash" onclick="processPayment('Cash')">
+                💵 Cash
+              </button>
+              <button class="payment-btn btn-gpay" onclick="processPayment('GPay')">
+                📱 GPay
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. RESTAURANT DETAILS (ADMIN View ONLY) -->
+    <section id="viewRestaurantList" class="view-section">
+      <!-- Role Banner -->
+      <div class="flow-diagram-banner" style="margin-bottom: 16px;">
+        🛡️ <strong>ADMIN Role Access:</strong> You have permission to manage <strong>Restaurant Details</strong>, add/update/delete <strong>Food Items</strong>, and view <strong>Placed Orders</strong>. Customer views are restricted.
+      </div>
+
+      <!-- Admin Header / Current Hotel Details Card -->
+      <div class="admin-header-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+          <div>
+            <h2 style="font-size: 1.4rem; font-weight: 800; color: #b78103;">🏢 Restaurant Details (Admin View)</h2>
+            <p style="font-size: 0.85rem; color: var(--gray-600);">Manage restaurant profile, menu food items, and customer placed orders (stored in MySQL)</p>
+          </div>
+
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <select id="adminRestaurantSelect" onchange="onAdminRestaurantChange()" style="padding: 8px 12px; border-radius: var(--radius); border: 1px solid var(--gray-300); font-weight: 600;">
+              <!-- Options populated by JS from MySQL -->
+            </select>
+            <button class="btn btn-primary btn-sm" onclick="openRestaurantModal(false)">✏️ Edit Restaurant</button>
+            <button class="btn btn-outline btn-sm" onclick="openRestaurantModal(true)">➕ New Restaurant</button>
+          </div>
+        </div>
+
+        <!-- Hotel Info Grid matching diagram: Hotel name ..., Location ..., Phone ... -->
+        <div class="hotel-info-grid">
+          <div class="hotel-info-item">
+            <div class="hotel-info-label">Hotel Name</div>
+            <div id="adminHotelName" class="hotel-info-value">KS cafe</div>
+          </div>
+          <div class="hotel-info-item">
+            <div class="hotel-info-label">Location</div>
+            <div id="adminLocation" class="hotel-info-value">Temple Street, Chennai</div>
+          </div>
+          <div class="hotel-info-item">
+            <div class="hotel-info-label">Phone</div>
+            <div id="adminPhone" class="hotel-info-value">9876543210</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Food Item CRUD Section: [add], [update], [delete] (Permission access) -->
+      <div class="card">
+        <div class="card-title">
+          <span>🍲 Food Items (Menu Management)</span>
+          <button class="btn btn-success btn-sm" onclick="openAddFoodModal()">➕ [add] Food Item</button>
+        </div>
+
+        <div class="flow-diagram-banner">
+          🔒 <strong>Admin Permission Access:</strong> You can <strong>[add]</strong>, <strong>[update]</strong>, and <strong>[delete]</strong> food items for this restaurant in MySQL.
+        </div>
+
+        <div class="data-table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Food Item Name</th>
+                <th>Price (₹)</th>
+                <th>Actions (Admin Permission)</th>
+              </tr>
+            </thead>
+            <tbody id="adminFoodTableBody">
+              <!-- Dynamic rows from MySQL -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Order Placed Section: [view], [delete] -->
+      <div class="card" id="ordersPlacedSection">
+        <div class="card-title">
+          <span>
+            📦 Order placed 
+            <span id="orderNotificationTag" class="badge-notify" style="display: none;">NEW</span>
+          </span>
+          <button class="btn btn-outline btn-sm" onclick="loadAdminOrders()">🔄 Refresh Orders</button>
+        </div>
+
+        <div class="flow-diagram-banner">
+          🔔 <strong>Notification:</strong> When a user pays via [Cash] or [GPay] in Summary, orders arrive here automatically with <strong>[view]</strong> and <strong>[delete]</strong> controls.
+        </div>
+
+        <div class="data-table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Order ID</th>
+                <th>Customer</th>
+                <th>Food Items Summary</th>
+                <th>Total</th>
+                <th>Payment</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="adminOrdersTableBody">
+              <!-- Dynamically populated from MySQL -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- MODAL: Add / Edit Food Item -->
+  <div id="foodItemModal" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="foodModalTitle" class="modal-title">Add Food Item</h3>
+        <button class="modal-close-btn" onclick="closeFoodModal()">&times;</button>
+      </div>
+      <form id="foodItemForm" onsubmit="handleFoodFormSubmit(event)">
+        <input type="hidden" id="foodItemId">
+
+        <div class="form-group">
+          <label for="foodItemName">Food Item Name</label>
+          <input type="text" id="foodItemName" placeholder="e.g. Idly, Dosa, Vada" required>
+        </div>
+
+        <div class="form-group">
+          <label for="foodItemPrice">Price (₹)</label>
+          <input type="number" step="0.5" id="foodItemPrice" placeholder="e.g. 30.00" required>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px;">
+          <button type="button" class="btn btn-outline" onclick="closeFoodModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="foodModalSubmitBtn">Save Food Item</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: Add / Edit Restaurant -->
+  <div id="restaurantModal" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="restaurantModalTitle" class="modal-title">Edit Restaurant</h3>
+        <button class="modal-close-btn" onclick="closeRestaurantModal()">&times;</button>
+      </div>
+      <form id="restaurantForm" onsubmit="handleRestaurantFormSubmit(event)">
+        <input type="hidden" id="restaurantFormId">
+
+        <div class="form-group">
+          <label for="restaurantFormName">Hotel / Restaurant Name</label>
+          <input type="text" id="restaurantFormName" placeholder="e.g. KS cafe" required>
+        </div>
+
+        <div class="form-group">
+          <label for="restaurantFormLocation">Location</label>
+          <input type="text" id="restaurantFormLocation" placeholder="e.g. Temple Street, Chennai" required>
+        </div>
+
+        <div class="form-group">
+          <label for="restaurantFormPhone">Phone</label>
+          <input type="tel" id="restaurantFormPhone" placeholder="e.g. 9876543210" required>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px;">
+          <button type="button" class="btn btn-outline" onclick="closeRestaurantModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Restaurant</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: View Placed Order Details -->
+  <div id="viewOrderModal" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title">📋 Order Details</h3>
+        <button class="modal-close-btn" onclick="closeViewOrderModal()">&times;</button>
+      </div>
+      <div id="viewOrderModalBody">
+        <!-- Injected via JS -->
+      </div>
+      <div style="display: flex; justify-content: flex-end; margin-top: 20px;">
+        <button class="btn btn-primary" onclick="closeViewOrderModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Payment Success ("only click display the 'payment Success'") -->
+  <div id="paymentSuccessModal" class="modal-overlay">
+    <div class="modal-box">
+      <div class="payment-success-content">
+        <div class="success-icon">✅</div>
+        <h2 class="payment-success-title">Payment Success</h2>
+        <p class="payment-success-desc">
+          Your payment has been successfully processed and recorded in MySQL! A notification has been sent to the Admin in the <strong>Order placed</strong> section.
+        </p>
+
+        <div id="paymentSuccessDetails" style="background: var(--gray-100); border-radius: var(--radius); padding: 14px; text-align: left; margin-bottom: 20px; font-size: 0.9rem;">
+          <!-- Injected via JS -->
+        </div>
+
+        <div style="display: flex; gap: 10px; justify-content: center;">
+          <button class="btn btn-primary" onclick="closePaymentSuccessModal('foodList')">Order More Food</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <p>Food Ordering & Restaurant Management System &bull; Java Spring Boot &bull; MySQL Database &bull; Role-Based Access Control</p>
+  </footer>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
